@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>너에게 전하는 편지 💌</title>
+  <!-- Lucide Icons for modern styling -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-gradient-start: #fff0f5;
+      --bg-gradient-end: #e6f0fa;
+      --primary-color: #f4a7bb;
+      --primary-dark: #e08ea3;
+      --text-color: #4a3f46;
+      --text-muted: #8b7f86;
+      --accent-color: #d47b94;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, var(--bg-gradient-start), var(--bg-gradient-end));
+      font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-color);
+      overflow-x: hidden;
+      padding: 20px 10px;
+    }
+
+    /* Background Canvas for falling petals */
+    #effectCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Background Music Controller */
+    .music-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(244, 167, 187, 0.3);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+    .music-btn:hover {
+      transform: scale(1.05);
+      background: #ffffff;
+    }
+    .music-btn.playing i {
+      animation: rotateMusic 4s linear infinite;
+    }
+
+    @keyframes rotateMusic {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Main Container */
+    .wrap {
+      width: 100%;
+      max-width: 420px;
+      perspective: 1000px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 3D Envelope Wrapper */
+    .envelope-container {
+      width: 100%;
+      height: 380px;
+      position: relative;
+      transition: transform 0.8s ease;
+      transform-style: preserve-3d;
+      margin-bottom: 20px;
+    }
+
+    /* Physical Envelope Element */
+    .envelope-3d {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: #fce4ec;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Envelope Flap (Top triangle) */
+    .envelope-flap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0;
+      border-left: 210px solid transparent;
+      border-right: 210px solid transparent;
+      border-top: 190px solid #f8bbd0;
+      transform-origin: top;
+      transition: transform 0.5s ease 0.3s, z-index 0.1s ease 0.5s;
+      z-index: 3;
+    }
+    @media (max-width: 420px) {
+      .envelope-flap {
+        border-left-width: calc(100vw * 0.45);
+        border-right-width: calc(100vw * 0.45);
+        border-top-width: 170px;
+      }
+    }
+
+    /* Front Pocket of Envelope */
+    .envelope-pocket {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 200px;
+      background-color: #f8bbd0;
+      border-radius: 0 0 16px 16px;
+      z-index: 2;
+      box-shadow: inset 0 4px 10px rgba(0,0,0,0.02);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding-top: 20px;
+    }
+
+    /* Envelope Pocket Side-guards for paper look */
+    .envelope-pocket::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(35deg, #f48fb1 50%, transparent 50.5%),
+                  linear-gradient(-35deg, #f48fb1 50%, transparent 50.5%);
+      background-size: 100% 100%;
+      opacity: 0.15;
+      border-radius: 0 0 16px 16px;
+      pointer-events: none;
+    }
+
+    .heart-seal {
+      font-size: 48px;
+      cursor: pointer;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+      transition: transform 0.3s ease;
+      z-index: 5;
+      animation: pulse 2s infinite;
+    }
+    .heart-seal:hover {
+      transform: scale(1.15);
+    }
+
+    .envelope-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #880e4f;
+      margin-top: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .envelope-sub {
+      font-size: 13px;
+      color: #ad1457;
+      margin-top: 6px;
+      opacity: 0.8;
+    }
+
+    /* Paper inside Envelope */
+    .paper {
+      position: absolute;
+      bottom: 10px;
+      left: 5%;
+      width: 90%;
+      height: 340px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 30px 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1) 0.6s, opacity 0.5s ease;
+      z-index: 1;
+      opacity: 0.8;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .paper-preview-text {
+      text-align: center;
+      margin-top: 15px;
+    }
+    .paper-preview-text h2 {
+      font-size: 18px;
+      color: var(--accent-color);
+      margin-bottom: 5px;
+    }
+    .paper-preview-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Opened State of Envelope styling */
+    .envelope-container.opened .envelope-flap {
+      transform: rotateX(180deg);
+      z-index: 0;
+    }
+
+    .envelope-container.opened .paper {
+      transform: translateY(-260px);
+      z-index: 4;
+      opacity: 0; /* Fade out as it expands to full screen modal */
+      pointer-events: none;
+    }
+
+    /* Fullscreen Detailed Letter (Appears after envelope open animation) */
+    .letter-modal {
+      display: none;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-radius: 28px;
+      padding: 40px 24px;
+      box-shadow: 0 20px 50px rgba(212, 123, 148, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      animation: modalFadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Lace/border ornament effect for the premium letter feel */
+    .letter-modal::before {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      border: 1px solid rgba(212, 123, 148, 0.2);
+      border-radius: 20px;
+      pointer-events: none;
+    }
+
+    .letter-modal::after {
+      content: '🌸';
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 18px;
+      opacity: 0.3;
+    }
+
+    .to {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-color);
+      margin-bottom: 28px;
+      position: relative;
+      display: inline-block;
+    }
+    .to::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 2px;
+      background: var(--primary-color);
+      border-radius: 2px;
+    }
+
+    .message {
+      font-size: 16px;
+      line-height: 2.1;
+      text-align: left;
+      white-space: pre-line;
+      color: #5a4f56;
+      font-weight: 400;
+      margin-bottom: 35px;
+      padding: 0 10px;
+    }
+
+    .date-box {
+      background: #fff5f7;
+      border-radius: 16px;
+      padding: 20px 15px;
+      margin-bottom: 25px;
+      border: 1px dashed rgba(244, 167, 187, 0.5);
+    }
+
+    .date-title {
+      font-size: 13px;
+      color: var(--accent-color);
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .date-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-color);
+      letter-spacing: 0.5px;
+    }
+
+    .date-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .only-tag {
+      font-size: 12px;
+      color: #bfa3af;
+      margin-top: 20px;
+      letter-spacing: -0.3px;
+    }
+
+    /* Button for visual action (e.g. Wedding Map / RSVP) */
+    .action-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn-main {
+      border: none;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      color: white;
+      padding: 14px 28px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(244,167,187,0.4);
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .btn-main:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(244,167,187,0.5);
+    }
+
+    /* Admin/Link Builder Segment */
+    .admin-trigger {
+      margin-top: 40px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: underline;
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+    .admin-trigger:hover {
+      opacity: 1;
+    }
+
+    .admin-panel {
+      display: none;
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      margin-top: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      border: 1px solid #f0e6eb;
+      text-align: left;
+      animation: fadeUp 0.6s ease;
+    }
+
+    .admin-panel h3 {
+      font-size: 16px;
+      color: var(--accent-color);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-color);
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      border: 1px solid #e2d6dd;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text-color);
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: var(--primary-color);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      border: 1px solid var(--primary-color);
+      background: transparent;
+      color: var(--accent-color);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover {
+      background: #fff5f7;
+    }
+
+    /* Custom Notification Alert Box (No standard alert browser windows used) */
+    .custom-alert {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .custom-alert.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Keyframes */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes modalFadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(60px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Effect Canvas for falling elements -->
+  <canvas id="effectCanvas"></canvas>
+
+  <!-- Sound Toggle Button -->
+  <div class="music-btn" id="musicBtn" onclick="toggleMusic()" title="배경음악 켜기/끄기">
+    <i data-lucide="music"></i>
+  </div>
+
+  <!-- Background Music Tag (Royal/Emotional Lo-fi style fallback audio) -->
+  <audio id="bgm" loop preload="auto">
+    <!-- Copyright free gentle wedding piano background track -->
+    <source src="https://assets.mixkit.co/active_storage/sfx/123/123-100.wav" type="audio/wav">
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
+  </audio>
+
+  <div class="wrap">
+    <!-- Interactive Envelope -->
+    <div class="envelope-container" id="envelopeContainer" onclick="handleEnvelopeClick()">
+      <!-- Flap (Back of envelope top folding part) -->
+      <div class="envelope-flap"></div>
+      
+      <!-- Inside Paper sliding out representation -->
+      <div class="paper" id="paper">
+        <div class="paper-preview-text">
+          <h2 id="paperTo">To. 소중한 사람</h2>
+          <p>고이 접은 마음이 기다리고 있어요.</p>
+        </div>
+      </div>
+
+      <!-- Front pocket covering paper -->
+      <div class="envelope-pocket">
+        <div class="heart-seal">💌</div>
+        <div class="envelope-title" id="envelopeTitleText">편지가 도착했습니다</div>
+        <div class="envelope-sub">실을 터치하여 열어보세요</div>
+      </div>
+    </div>
+
+    <!-- Letter Detail Modal (Fades up after envelope completes animation) -->
+    <div class="letter-modal" id="letterModal">
+      <div class="to" id="toName">To. 소중한 사람</div>
+      <div class="message" id="message"></div>
+
+      <!-- Wedding Info Board -->
+      <div class="date-box">
+        <div class="date-title">WEDDING DAY</div>
+        <div class="date-val">2027년 2월 27일 토요일</div>
+        <div class="date-sub">낮 12시 30분, 따뜻한 봄날의 시작</div>
+      </div>
+
+      <div class="action-btn-group">
+        <button class="btn-main" onclick="playMusicExplicit()">
+          <i data-lucide="heart"></i> 축하하는 마음 전하기
+        </button>
+      </div>
+
+      <div class="only-tag" id="onlyText">이 편지는 당신만을 위해 준비한 따뜻한 초대입니다.</div>
+    </div>
+
+    <!-- Admin Generator Trigger -->
+    <div class="admin-trigger" onclick="toggleAdminPanel()">
+      지인별 개별 맞춤 링크 만들기 (빌더 열기)
+    </div>
+
+    <!-- Link Generator Panel (In-memory configuration utility) -->
+    <div class="admin-panel" id="adminPanel">
+      <h3><i data-lucide="settings"></i> 모바일 편지 링크 생성기</h3>
+      <div class="form-group">
+        <label for="inputName">받는 이 이름 (예: 김철수, 혜원 언니)</label>
+        <input type="text" id="inputName" placeholder="소중한 분의 이름을 적어주세요" oninput="generateLink()" />
+      </div>
+      <div class="form-group">
+        <label for="inputMessage">전하고 싶은 개별 메시지</label>
+        <textarea id="inputMessage" rows="5" placeholder="기본 편지 문구 대신 표시될 따뜻한 이야기를 입력해보세요." oninput="generateLink()"></textarea>
+      </div>
+      <div class="form-group" style="margin-top: 20px;">
+        <label style="color: var(--accent-color);">생성된 커스텀 URL 주소</label>
+        <input type="text" id="generatedUrl" readonly onclick="this.select()" style="background: #fdfafb; cursor: pointer; border-style: dashed;" />
+      </div>
+      <button class="btn-secondary" onclick="copyGeneratedLink()">
+        <i data-lucide="copy" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> 링크 복사하기
+      </button>
+    </div>
+  </div>
+
+  <!-- Custom Alert Alert Box -->
+  <div class="custom-alert" id="customAlert">
+    <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+    <span id="alertText">링크가 복사되었습니다!</span>
+  </div>
+
+  <script>
+    // URL Parameter Extraction
+    const params = new URLSearchParams(window.location.search);
+    const nameParam = params.get("name") || "소중한 분";
+    const msgParam = params.get("msg") || 
+`늘 곁에서 든든한 버팀목이 되어주시고,
+따뜻한 격려로 저희의 성장을 지켜봐 주신
+소중한 분께 감사한 마음을 담아 초대장을 보냅니다.
+
+저희 두 사람이 약속하는 새로운 걸음마 자리에
+함께해주셔서 자리를 빛내주신다면
+더 없는 기쁨과 큰 격려가 될 것 같습니다.
+
+소중한 가을날, 귀한 걸음 해 주시면 감사하겠습니다.`;
+
+    // Dynamic text injection
+    document.getElementById("paperTo").innerText = `To. ${nameParam}`;
+    document.getElementById("toName").innerText = `To. ${nameParam}`;
+    document.getElementById("message").innerText = msgParam;
+    document.getElementById("onlyText").innerText = `이 모바일 서신은 오직 ${nameParam}님 한 분만을 위해 제작되었습니다.`;
+
+    // Admin generator defaults
+    document.getElementById("inputName").value = nameParam === "소중한 분" ? "" : nameParam;
+    document.getElementById("inputMessage").value = params.get("msg") || "";
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Sound toggle state
+    const bgm = document.getElementById("bgm");
+    const musicBtn = document.getElementById("musicBtn");
+    let isMusicPlaying = false;
+
+    function toggleMusic() {
+      if (isMusicPlaying) {
+        bgm.pause();
+        musicBtn.classList.remove("playing");
+        musicBtn.innerHTML = '<i data-lucide="music-off"></i>';
+      } else {
+        bgm.play().catch(e => {
+          console.log("Audio play prevented by browser autoplay security policies.");
+        });
+        musicBtn.classList.add("playing");
+        musicBtn.innerHTML = '<i data-lucide="music"></i>';
+      }
+      isMusicPlaying = !isMusicPlaying;
+      lucide.createIcons();
+    }
+
+    function playMusicExplicit() {
+      if(!isMusicPlaying) {
+        toggleMusic();
+        showAlert("🌸 따스한 봄날의 음악이 켜졌습니다.");
+      } else {
+        showAlert("🤍 참석 여부 또는 축하 소식은 혼주에게 직접 전달됩니다.");
+      }
+    }
+
+    // Envelope Interactive Click Event
+    let isEnvelopeOpened = false;
+    function handleEnvelopeClick() {
+      if (isEnvelopeOpened) return;
+      isEnvelopeOpened = true;
+
+      const container = document.getElementById("envelopeContainer");
+      container.classList.add("opened");
+
+      // Auto play background music on user action (helps bypass browser autoplay restrictions)
+      if (!isMusicPlaying) {
+        bgm.play().then(() => {
+          isMusicPlaying = true;
+          musicBtn.classList.add("playing");
+        }).catch(err => console.log("Silent autoplay restriction applied."));
+      }
+
+      // Start beautiful particles effect
+      initParticles();
+
+      // Softly morph 3D envelope into high quality full-text letter modal
+      setTimeout(() => {
+        container.style.display = "none";
+        const modal = document.getElementById("letterModal");
+        modal.style.display = "block";
+      }, 1300);
+    }
+
+    // Admin UI actions
+    function toggleAdminPanel() {
+      const panel = document.getElementById("adminPanel");
+      const isVisible = panel.style.display === "block";
+      panel.style.display = isVisible ? "none" : "block";
+      if (!isVisible) {
+        generateLink();
+        panel.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function generateLink() {
+      const customName = document.getElementById("inputName").value.trim() || "소중한 분";
+      const customMsg = document.getElementById("inputMessage").value.trim();
+      
+      const baseUrl = window.location.origin + window.location.pathname;
+      const finalParams = new URLSearchParams();
+      if (customName) finalParams.set("name", customName);
+      if (customMsg) finalParams.set("msg", customMsg);
+
+      const generatedUrlInput = document.getElementById("generatedUrl");
+      generatedUrlInput.value = finalParams.toString() ? `${baseUrl}?${finalParams.toString()}` : baseUrl;
+    }
+
+    function copyGeneratedLink() {
+      const urlInput = document.getElementById("generatedUrl");
+      urlInput.select();
+      
+      // Use execCommand as a safe fallback within iframe bounds
+      try {
+        document.execCommand('copy');
+        showAlert("✨ 카톡 전송용 맞춤 링크가 복사되었습니다!");
+      } catch (err) {
+        showAlert("링크 선택을 길게 눌러 복사해 주세요.");
+      }
+    }
+
+    // Native Custom Modal Alert Trigger
+    function showAlert(msg) {
+      const alertBox = document.getElementById("customAlert");
+      document.getElementById("alertText").innerText = msg;
+      alertBox.classList.add("show");
+      setTimeout(() => {
+        alertBox.classList.remove("show");
+      }, 3000);
+    }
+
+
+    /* Canvas Interactive Sakura/Heart Particles Effect */
+    const canvas = document.getElementById("effectCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let animationFrameId;
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * -canvas.height - 20;
+        this.size = Math.random() * 8 + 6;
+        this.speedX = Math.random() * 1.5 - 0.5;
+        this.speedY = Math.random() * 1.5 + 1;
+        this.opacity = Math.random() * 0.5 + 0.4;
+        this.rotation = Math.random() * 360;
+        this.rotationSpeed = Math.random() * 2 - 1;
+        this.type = Math.random() > 0.4 ? 'petal' : 'heart'; // Mix of cherry blossom petals and hearts
+      }
+
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX + Math.sin(this.y / 30) * 0.5; // gentle swing motion
+        this.rotation += this.rotationSpeed;
+
+        if (this.y > canvas.height + 20) {
+          this.y = -20;
+          this.x = Math.random() * canvas.width;
+          this.opacity = Math.random() * 0.5 + 0.4;
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation * Math.PI) / 180);
+        ctx.globalAlpha = this.opacity;
+
+        if (this.type === 'petal') {
+          // Soft pink sakura petal drawing
+          ctx.fillStyle = "rgba(244, 167, 187, 0.85)";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.bezierCurveTo(-this.size, -this.size/2, -this.size, this.size/2, 0, this.size);
+          ctx.bezierCurveTo(this.size, this.size/2, this.size, -this.size/2, 0, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // Gentle warm pink small hearts
+          ctx.fillStyle = "rgba(212, 123, 148, 0.75)";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.bezierCurveTo(-this.size/2, -this.size/2, -this.size, 0, 0, this.size);
+          ctx.bezierCurveTo(this.size, 0, this.size/2, -this.size/2, 0, 0);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    function initParticles() {
+      // Create moderate amount of particles for delicate experience without performance drain
+      particles = [];
+      const particleCount = Math.min(60, Math.floor(window.innerWidth / 10));
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+      animate();
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        p.update();
+        p.draw();
+      });
+      animationFrameId = requestAnimationFrame(animate);
+    }
+  </script>
+</body>
+</html>
